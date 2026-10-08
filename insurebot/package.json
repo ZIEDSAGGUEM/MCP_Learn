@@ -7,7 +7,13 @@
     "build": "tsc -p tsconfig.json",
     "start": "node --import ./dist/telemetry.js dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "security:lockfile": "node scripts/check-lockfile.mjs",
+    "security:audit": "npm audit --audit-level=high",
+    "security:secrets": "docker run --rm -v \"$PWD/..:/repo\" ghcr.io/gitleaks/gitleaks:v8.28.0 git /repo --redact --no-banner",
+    "security:shadow-scan": "tsx scripts/shadow-mcp-scan.ts",
+    "security:tool-manifest": "tsx scripts/tool-manifest.ts",
+    "sbom": "npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json"
   },
   "type": "module",
   "dependencies": {

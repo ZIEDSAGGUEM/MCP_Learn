@@ -1,7 +1,7 @@
 # InsureBot
 
 A multi-tenant MCP server for insurance agencies, built step by step to learn MCP security (spec 2026-07-28).
-Done so far: **step 00** (local lab), **step 01** (stateless server, two tools), **step 02** (every request needs a Keycloak token; scopes per tool), **step 03** (a quote ID only works for its owner), **step 04** (`charge_premium`: user confirms first, never charges twice), **step 05** (gateway: WAF on headers, no shared caching). Month 1 complete. **Step 06** (Postgres row-level security), **step 07** (model-facing safety: prompt injection can't exfiltrate, rate limits), **step 08** (reports: background job behind a handle, no shell), **step 09** (audit log + tracing). Month 2 complete. **Step 10** (policy as code: Cedar behind AuthZEN).
+Done so far: **step 00** (local lab), **step 01** (stateless server, two tools), **step 02** (every request needs a Keycloak token; scopes per tool), **step 03** (a quote ID only works for its owner), **step 04** (`charge_premium`: user confirms first, never charges twice), **step 05** (gateway: WAF on headers, no shared caching). Month 1 complete. **Step 06** (Postgres row-level security), **step 07** (model-facing safety: prompt injection can't exfiltrate, rate limits), **step 08** (reports: background job behind a handle, no shell), **step 09** (audit log + tracing). Month 2 complete. **Step 10** (policy as code: Cedar behind AuthZEN), **step 11** (supply chain: pinned images, scans, CI, inventory).
 
 ## Run it
 
@@ -11,7 +11,7 @@ cp .env.example .env             # then fill PAYCO_API_KEY, REQUEST_STATE_KEY (o
 docker compose up -d --build     # lab + 3 InsureBot pods behind nginx + PayCo mock
 npm install
 cp .env.test.example .env.test   # fill in the Keycloak passwords for alice, bob, carol
-npm test                         # steps 01–10: 101 checks
+npm test                         # steps 01–11: 109 checks
 ```
 
 | Service | URL | Used from |
@@ -237,6 +237,27 @@ The tool list still hides admin tools from non-admins (visibility); the policy i
 
 To learn next (not deployed): the same rules in OPA/Rego behind the same AuthZEN endpoint, and Dogwood-style rules
 over sequences of actions, for example "no `email_quote` in the same session after `export_report`".
+
+## What step 11 proves
+
+InsureBot also runs other people's code (306 npm packages, 9 container images), and secrets or forgotten servers can leak
+outside the code. These checks run locally (`npm run security:*`) and in GitHub Actions (`.github/workflows/security.yml`)
+on every push and every Monday. Dependabot (`.github/dependabot.yml`) opens a pull request for every update.
+
+| Check | How | Lesson |
+|---|---|---|
+| Secrets in Git history | gitleaks over every commit (a deleted file is still in history) | MCP01 |
+| Known-vulnerable packages | `npm audit` + Google OSV scanner | LLM03, MCP04 |
+| Lockfile | Every package from the npm registry over HTTPS with a sha512 hash (`scripts/check-lockfile.mjs`) | MCP04 |
+| Container images | Every image pinned to version **and** digest; no `:latest` | MCP04 |
+| GitHub Actions | Pinned to full commit SHAs | MCP04 |
+| SBOM | `npm run sbom` → CycloneDX list of what's inside | LLM03 |
+| Tool poisoning | `security/tool-manifest.json` fingerprints every tool's description and schemas; a change fails the tests until reviewed | MCP03 |
+| Shadow servers | `npm run security:shadow-scan` flags MCP endpoints that answer without a token; `INVENTORY.md` lists every server | Episode 20, MCP09 |
+| Unprotected start | InsureBot refuses to start without `OIDC_ISSUER` | Episode 20 |
+
+Proofs: gitleaks caught a fake key committed in a throwaway clone; the scanner caught a rogue MCP server with no auth
+(`test/fixtures/rogue-mcp.ts`) while every lab entrance came back "protected".
 
 ## SDK notes
 

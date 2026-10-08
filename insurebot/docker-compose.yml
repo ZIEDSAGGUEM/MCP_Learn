@@ -2,10 +2,12 @@
 # Postgres, Keycloak, Mailpit and Jaeger are started now but used from later steps:
 #   Keycloak → step 02, Postgres → step 06, Mailpit → step 07, Jaeger → step 09.
 # Dev-only passwords. Never reuse them outside this laptop.
+# Every image is pinned to a version AND a digest (step 11): what runs can't change under you.
+# Dependabot opens a pull request when a newer version exists.
 
 services:
   redis:
-    image: redis:7.4
+    image: redis:7.4.11@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f
     ports: ["127.0.0.1:6380:6379"] # 6380 on the Mac: 6379 is taken by a local Redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -13,7 +15,7 @@ services:
       retries: 10
 
   postgres:
-    image: postgres:17
+    image: postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
     environment:
       POSTGRES_PASSWORD: devonly # superuser: for migrations only, never used by the app
       POSTGRES_DB: insurebot
@@ -28,7 +30,7 @@ services:
       retries: 10
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    image: quay.io/keycloak/keycloak:26.0.8@sha256:09a381c715ab0b111835b70f2905955274843a219c6f27efb348e4d9f4086858
     # --import-realm loads keycloak/insurebot-realm.json on first start (once you've exported it)
     command: start-dev --import-realm
     environment:
@@ -44,11 +46,11 @@ services:
     ports: ["127.0.0.1:8080:8080"]
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.31.4@sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48
     ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
 
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/all-in-one:1.76.0@sha256:ab6f1a1f0fb49ea08bcd19f6b84f6081d0d44b364b6de148e1798eb5816bacac
     ports: ["127.0.0.1:16686:16686", "127.0.0.1:4318:4318"]
 
   insurebot:
@@ -105,7 +107,7 @@ services:
 
   payco:
     # Mock payment provider (step 04). Plain Node, no build step.
-    image: node:24-slim
+    image: node:24.21.0-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
     command: ["node", "/app/server.mjs"]
     user: node
     volumes: ["./payco:/app:ro"]
@@ -114,7 +116,7 @@ services:
     ports: ["127.0.0.1:4000:4000"] # exposed so tests can count the charges
 
   gateway:
-    image: nginx:1.27
+    image: nginx:1.27.5@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:

@@ -1,0 +1,66 @@
+# Step 11: supply-chain checks on every push and pull request, plus every Monday
+# (new vulnerabilities are published every week, even when our code doesn't change).
+# Actions are pinned to full commit SHAs: a tag like "v7" can be moved to point at other code.
+name: security
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the whole history: a secret deleted later is still a leak
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.28.0 git /repo --redact --no-banner
+
+  dependencies:
+    name: Dependencies (lockfile, npm audit, OSV, SBOM)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: insurebot
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Lockfile only from the npm registry, with integrity hashes
+        run: node scripts/check-lockfile.mjs
+      - name: Install exactly the lockfile
+        run: npm ci --ignore-scripts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: npm audit (fail on high or critical)
+        run: npm audit --audit-level=high
+      - name: OSV scanner
+        run: docker run --rm -v "$PWD:/src:ro" ghcr.io/google/osv-scanner:v2.2.3 scan source --lockfile /src/package-lock.json
+      - name: SBOM (CycloneDX)
+        run: npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: insurebot/sbom.cdx.json
+
+  image:
+    name: Container image builds from pinned base
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: No unpinned images
+        working-directory: insurebot
+        run: |
+          if grep -nE '^\s*image:|^FROM' docker-compose.yml Dockerfile | grep -vE '@sha256:[0-9a-f]{64}'; then
+            echo "Every image must be pinned to a digest"; exit 1
+          fi
+      - name: Build
+        run: docker build -t insurebot:ci insurebot

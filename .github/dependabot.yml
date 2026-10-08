@@ -1,0 +1,19 @@
+# Step 11: a pull request when a dependency, base image or Action has a newer version.
+# Updates still go through CI and review: nothing merges by itself.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /insurebot
+    schedule: { interval: weekly }
+    groups:
+      opentelemetry: { patterns: ["@opentelemetry/*"] }
+      mcp-sdk: { patterns: ["@modelcontextprotocol/*"] }
+  - package-ecosystem: docker
+    directory: /insurebot
+    schedule: { interval: weekly }
+  - package-ecosystem: docker-compose
+    directory: /insurebot
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
