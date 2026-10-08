@@ -1,0 +1,130 @@
+# InsureBot local lab (Step 00).
+# Postgres, Keycloak, Mailpit and Jaeger are started now but used from later steps:
+#   Keycloak → step 02, Postgres → step 06, Mailpit → step 07, Jaeger → step 09.
+# Dev-only passwords. Never reuse them outside this laptop.
+
+services:
+  redis:
+    image: redis:7.4
+    ports: ["127.0.0.1:6380:6379"] # 6380 on the Mac: 6379 is taken by a local Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: devonly # superuser: for migrations only, never used by the app
+      POSTGRES_DB: insurebot
+      INSUREBOT_APP_PASSWORD: ${INSUREBOT_APP_PASSWORD:?set INSUREBOT_APP_PASSWORD in .env} # read by db/001_roles.sh
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    # --import-realm loads keycloak/insurebot-realm.json on first start (once you've exported it)
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # One fixed public name, so "iss" is the same whether a token is fetched
+      # from the Mac (localhost:8080) or checked from a pod (keycloak:8080)
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - kcdata:/opt/keycloak/data # keeps your realm when the container is recreated
+      - ./keycloak:/opt/keycloak/data/import:ro
+    ports: ["127.0.0.1:8080:8080"]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports: ["127.0.0.1:16686:16686", "127.0.0.1:4318:4318"]
+
+  insurebot:
+    build: .
+    deploy:
+      replicas: 3 # three pods behind one gateway: proves the server is stateless
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      REDIS_URL: redis://redis:6379
+      QUOTE_TTL_SECONDS: 1800
+      LEGACY_MODE: stateless # set to "reject" to refuse 2025-era clients
+      OIDC_ISSUER: http://localhost:8080/realms/insurebot # what tokens say in "iss"
+      OIDC_INTERNAL_URL: http://keycloak:8080/realms/insurebot # how pods reach Keycloak
+      RESOURCE_URL: http://localhost:3000/mcp # InsureBot's identity: must be in the token's "aud"
+      PAYCO_URL: http://payco:4000
+      # Secrets come from .env (git-ignored), never written in this file
+      PAYCO_API_KEY: ${PAYCO_API_KEY:?set PAYCO_API_KEY in .env}
+      REQUEST_STATE_KEY: ${REQUEST_STATE_KEY:?set REQUEST_STATE_KEY in .env}
+      # Connects as insurebot_app: not the owner, not a superuser, so RLS always applies
+      DATABASE_URL: postgres://insurebot_app:${INSUREBOT_APP_PASSWORD}@postgres:5432/insurebot
+      SMTP_URL: smtp://mailpit:1025 # every email lands in Mailpit, http://localhost:8025
+      RATE_LIMIT_PER_MINUTE: 600 # requests per agency per minute (LLM10)
+      # Step 09: traces go to Jaeger, http://localhost:16686
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: insurebot
+      OTEL_BSP_SCHEDULE_DELAY: 500 # send spans every 0.5 s (lab: see them quickly)
+      # Step 10: every tool call is checked by the PDP; if it's down, everything is denied
+      PDP_URL: http://pdp:8181
+      PDP_API_KEY: ${PDP_API_KEY:?set PDP_API_KEY in .env}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      pdp:
+        condition: service_healthy
+
+  pdp:
+    # Step 10: Policy Decision Point. Same image as InsureBot, different program.
+    build: .
+    command: ["node", "dist/pdp/server.js"]
+    environment:
+      PDP_PORT: 8181
+      POLICY_DIR: /policy
+      PDP_API_KEY: ${PDP_API_KEY:?set PDP_API_KEY in .env}
+    volumes: ["./policy:/policy:ro"] # edit policy/*.cedar on the Mac: reloaded within 2 s
+    ports: ["127.0.0.1:8181:8181"] # exposed so tests can check policies directly
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8181/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      retries: 10
+
+  payco:
+    # Mock payment provider (step 04). Plain Node, no build step.
+    image: node:24-slim
+    command: ["node", "/app/server.mjs"]
+    user: node
+    volumes: ["./payco:/app:ro"]
+    environment:
+      PAYCO_API_KEY: ${PAYCO_API_KEY:?set PAYCO_API_KEY in .env}
+    ports: ["127.0.0.1:4000:4000"] # exposed so tests can count the charges
+
+  gateway:
+    image: nginx:1.27
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:3000:80" # public entrance (WAF blocks admin tools)
+      - "127.0.0.1:3002:81" # admin entrance
+      - "127.0.0.1:3003:82" # LAB: shared cache that respects Cache-Control
+      - "127.0.0.1:3004:83" # LAB: broken shared cache (ignores Cache-Control) → shows Episode 6
+    depends_on:
+      - insurebot
+
+volumes:
+  pgdata:
+  kcdata:

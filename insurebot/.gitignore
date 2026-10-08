@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+*.log
+.env.test
+# Realm export contains user password hashes
+keycloak/insurebot-realm.json
