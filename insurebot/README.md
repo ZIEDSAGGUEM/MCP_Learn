@@ -1,7 +1,7 @@
 # InsureBot
 
 A multi-tenant MCP server for insurance agencies, built step by step to learn MCP security (spec 2026-07-28).
-Done so far: **step 00** (local lab), **step 01** (stateless server, two tools), **step 02** (every request needs a Keycloak token; scopes per tool), **step 03** (a quote ID only works for its owner), **step 04** (`charge_premium`: user confirms first, never charges twice), **step 05** (gateway: WAF on headers, no shared caching). Month 1 complete. **Step 06** (Postgres row-level security), **step 07** (model-facing safety: prompt injection can't exfiltrate, rate limits), **step 08** (reports: background job behind a handle, no shell), **step 09** (audit log + tracing). Month 2 complete. **Step 10** (policy as code: Cedar behind AuthZEN), **step 11** (supply chain: pinned images, scans, CI, inventory).
+Done so far: **step 00** (local lab), **step 01** (stateless server, two tools), **step 02** (every request needs a Keycloak token; scopes per tool), **step 03** (a quote ID only works for its owner), **step 04** (`charge_premium`: user confirms first, never charges twice), **step 05** (gateway: WAF on headers, no shared caching). Month 1 complete. **Step 06** (Postgres row-level security), **step 07** (model-facing safety: prompt injection can't exfiltrate, rate limits), **step 08** (reports: background job behind a handle, no shell), **step 09** (audit log + tracing). Month 2 complete. **Step 10** (policy as code: Cedar behind AuthZEN), **step 11** (supply chain: pinned images, scans, CI, inventory), **step 12** (attack report). All 13 steps done.
 
 ## Run it
 
@@ -12,6 +12,7 @@ docker compose up -d --build     # lab + 3 InsureBot pods behind nginx + PayCo m
 npm install
 cp .env.test.example .env.test   # fill in the Keycloak passwords for alice, bob, carol
 npm test                         # steps 01–11: 109 checks
+npm run attack-report            # step 12: maps every test to the 20 attacks → security/ATTACK-REPORT.md
 ```
 
 | Service | URL | Used from |
@@ -258,6 +259,18 @@ on every push and every Monday. Dependabot (`.github/dependabot.yml`) opens a pu
 
 Proofs: gitleaks caught a fake key committed in a throwaway clone; the scanner caught a rogue MCP server with no auth
 (`test/fixtures/rogue-mcp.ts`) while every lab entrance came back "protected".
+
+## What step 12 proves
+
+`npm run attack-report` runs the whole suite, maps each test to the 20 InsureBot attacks (`security/episodes.json`),
+and writes [`security/ATTACK-REPORT.md`](security/ATTACK-REPORT.md): every attack, its OWASP IDs, the step and defence
+that block it, the tests that prove it, and the mutation checks done during the build. It exits with 1 if any applicable
+attack has no passing test, so it can gate a release.
+
+Result: **19 of 19 applicable attacks blocked, 109 of 109 tests passed.** Episode 12 (confused deputy) doesn't apply:
+InsureBot is not an OAuth proxy to a third party.
+
+Proof the report goes red: with row-level security switched off, it showed 17/19 (Episodes 13 and 17 failing).
 
 ## SDK notes
 

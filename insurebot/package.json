@@ -13,7 +13,8 @@
     "security:secrets": "docker run --rm -v \"$PWD/..:/repo\" ghcr.io/gitleaks/gitleaks:v8.28.0 git /repo --redact --no-banner",
     "security:shadow-scan": "tsx scripts/shadow-mcp-scan.ts",
     "security:tool-manifest": "tsx scripts/tool-manifest.ts",
-    "sbom": "npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json"
+    "sbom": "npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json",
+    "attack-report": "tsx scripts/attack-report.ts"
   },
   "type": "module",
   "dependencies": {
