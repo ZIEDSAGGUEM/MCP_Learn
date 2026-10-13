@@ -4,7 +4,7 @@
 import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import * as z from "zod/v4";
-import { evaluate, loadPolicies } from "./engine.js";
+import { check, evaluate, loadPolicies, status } from "./engine.js";
 
 const PORT = Number(process.env.PDP_PORT ?? 8181);
 const POLICY_DIR = process.env.POLICY_DIR ?? "./policy";
@@ -47,6 +47,12 @@ app.post("/access/v1/evaluation", requireApiKey, (req, res) => {
   const result = evaluate(parsed.data);
   res.json({ decision: result.decision, context: { reasons: result.reasons, errors: result.errors } });
 });
+
+// For the lab UI's policy editor: which rules are in force, and "would this draft load?"
+app.get("/policies/status", requireApiKey, (_req, res) => res.json(status()));
+app.post("/policies/check", requireApiKey, express.text({ type: "*/*", limit: "64kb" }), (req, res) =>
+  res.json(check(typeof req.body === "string" ? req.body : "")),
+);
 
 await loadPolicies(POLICY_DIR);
 // Reload every 2 s: a policy change takes effect without a rebuild or a redeploy

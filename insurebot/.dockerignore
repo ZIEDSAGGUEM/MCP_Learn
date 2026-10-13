@@ -3,3 +3,8 @@ dist
 .git
 test
 *.md
+**/node_modules
+ui/.next
+.env
+.env.test
+keycloak/insurebot-realm.json

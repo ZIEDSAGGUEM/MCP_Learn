@@ -7,7 +7,9 @@ try {
   // no .env.test: rely on real environment variables
 }
 
-export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3000/mcp";
+// 127.0.0.1, not "localhost": the gateway listens on IPv4 only, and "localhost" may resolve to IPv6 (::1),
+// where another local dev server could be listening on the same port.
+export const MCP_URL = process.env.MCP_URL ?? "http://127.0.0.1:3000/mcp";
 export const RESOURCE_URL = process.env.RESOURCE_URL ?? "http://localhost:3000/mcp";
 export const OIDC_ISSUER = process.env.OIDC_ISSUER ?? "http://localhost:8080/realms/insurebot";
 const TOKEN_URL = process.env.KEYCLOAK_TOKEN_URL ?? `${OIDC_ISSUER}/protocol/openid-connect/token`;

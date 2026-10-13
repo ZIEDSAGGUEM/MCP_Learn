@@ -4,7 +4,7 @@ import { createClient } from "redis";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { connect, tokenFor } from "./helpers.js";
 
-const REDIS_URL = process.env.REDIS_TEST_URL ?? "redis://127.0.0.1:6380";
+const REDIS_URL = process.env.REDIS_TEST_URL ?? "redis://127.0.0.1:6381";
 const NOT_FOUND = [{ type: "text", text: "Quote not found" }];
 
 const subOf = (token: string) => JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub as string;

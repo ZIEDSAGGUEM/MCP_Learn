@@ -35,7 +35,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const { rawRequest, tokenFor } = await import("../test/helpers.js");
   // An admin sees every tool, including the admin-only ones
   const token = await tokenFor("carol", "quotes:read reports:admin");
-  const res = await rawRequest(token, "tools/list", {}, undefined, {}, "http://localhost:3002/mcp");
+  const res = await rawRequest(token, "tools/list", {}, undefined, {}, "http://127.0.0.1:3002/mcp");
   const manifest = fingerprint(res.body.result.tools);
   await writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n");
   console.log(`wrote ${Object.keys(manifest).length} tool fingerprints to security/tool-manifest.json`);

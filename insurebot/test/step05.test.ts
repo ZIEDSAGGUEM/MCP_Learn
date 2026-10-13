@@ -3,10 +3,10 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, test } from "vitest";
 import { rawRequest, tokenFor } from "./helpers.js";
 
-const PUBLIC = "http://localhost:3000/mcp";
-const ADMIN = "http://localhost:3002/mcp";
-const LAB_GOOD_CACHE = "http://localhost:3003/mcp";
-const LAB_BROKEN_CACHE = "http://localhost:3004/mcp";
+const PUBLIC = "http://127.0.0.1:3000/mcp";
+const ADMIN = "http://127.0.0.1:3002/mcp";
+const LAB_GOOD_CACHE = "http://127.0.0.1:3003/mcp";
+const LAB_BROKEN_CACHE = "http://127.0.0.1:3004/mcp";
 
 let alice: string; // agent at Acme
 let bob: string; // agent at Globex

@@ -9,7 +9,7 @@ try {
 } catch {}
 const PDP = process.env.PDP_TEST_URL ?? "http://127.0.0.1:8181";
 const PDP_KEY = process.env.PDP_API_KEY ?? "";
-const ADMIN = "http://localhost:3002/mcp";
+const ADMIN = "http://127.0.0.1:3002/mcp";
 const SUPERUSER_DB = process.env.SUPERUSER_DATABASE_URL ?? "postgres://postgres:devonly@127.0.0.1:5432/insurebot";
 
 type Props = Record<string, string | number | boolean | string[]>;
@@ -108,7 +108,7 @@ describe("Step 10: the business rule, end to end", () => {
     expect(priceEur).toBeGreaterThan(200);
     const res = await rawRequest(alice, "tools/call", { name: "charge_premium", arguments: { quote_id: quoteId } }, undefined, CAN_ASK);
     expect(res.body.result.isError).toBe(true);
-    expect(res.body.result.content[0].text).toContain("need an admin");
+    expect(res.body.result.content[0].text).toContain("needs an admin");
 
     const { rows } = await su.query("SELECT outcome FROM audit_log WHERE tool = 'charge_premium' AND outcome = 'policy_denied' AND at > now() - interval '1 minute'");
     expect(rows.length).toBeGreaterThan(0); // the refusal is in the audit log

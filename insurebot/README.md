@@ -21,20 +21,22 @@ npm run attack-report            # step 12: maps every test to the 20 attacks â†
 | InsureBot, admin entrance | http://localhost:3002/mcp | step 05 |
 | LAB: shared cache that respects `Cache-Control` | http://localhost:3003/mcp | step 05 |
 | LAB: broken shared cache (shows the Episode 6 leak) | http://localhost:3004/mcp | step 05 |
-| Redis | localhost:**6380** (6379 is taken by a local Redis) | step 01 |
+| Redis | localhost:**6381** (6379 and 6380 are used by other local projects) | step 01 |
 | Keycloak | http://localhost:8080 (admin / admin) | step 02 |
 | Postgres | localhost:5432 (postgres / devonly) | step 06 |
 | Mailpit | http://localhost:8025 | step 07 |
 | PayCo (mock payments) | http://localhost:4000 (needs `PAYCO_API_KEY`) | step 04 |
 | PDP (Cedar policies, AuthZEN API) | http://localhost:8181 (needs `PDP_API_KEY`) | step 10 |
 | Jaeger (traces) | http://localhost:16686, service `insurebot` | step 09 |
+| **Security Lab UI** | **http://localhost:3005** (log in as alice, bob, carol, dave or erin) | lab UI |
 
-All ports are bound to `127.0.0.1` only. Passwords are dev-only.
+All ports are bound to `127.0.0.1` only. Passwords are dev-only. Use `127.0.0.1` rather than `localhost` for the lab ports:
+`localhost` may resolve to IPv6 first, where another local dev server could answer on the same port.
 
 ### Run one server without Docker
 
 ```bash
-cp .env.example .env             # Redis from the lab on 6380
+cp .env.example .env             # Redis from the lab on 6381
 npx tsx watch --env-file=.env src/server.ts
 MCP_URL=http://127.0.0.1:3001/mcp npm test   # multi-pod tests are skipped
 ```
@@ -271,6 +273,26 @@ Result: **19 of 19 applicable attacks blocked, 109 of 109 tests passed.** Episod
 InsureBot is not an OAuth proxy to a third party.
 
 Proof the report goes red: with row-level security switched off, it showed 17/19 (Episodes 13 and 17 failing).
+
+## Security Lab UI (`ui/`)
+
+A Next.js dashboard at http://localhost:3005, run by `docker compose up -d --build`. It is just another MCP client:
+it goes through the same gateway, tokens, RLS and policies as Claude does.
+
+| Tab | What you can do |
+|---|---|
+| **Playground** | Every tool your token can see, as a form (or raw JSON, to add arguments like a model would). Confirmation questions (MRTR) appear as a dialog. Every request and response is shown exactly as sent, with the pod that answered and a Jaeger link |
+| **Attack lab** | 16 attacks from the InsureBot story, one card each, replayed against the running lab with the test accounts. Each verdict is decided from the real responses (switching RLS off turns Episode 17 red) |
+| **Evidence** | The live audit log (read through a SELECT-only role), Mailpit's inbox with a "to mallory.test" counter, Jaeger links |
+| **Policies** | The Cedar rules in force. Admins (Carol, Erin) can edit and save; drafts are checked by the PDP first, drafts with no policies are refused (lockout), and "Restore original" puts the shipped rules back |
+
+How it is secured:
+- **Backend-for-frontend**: Keycloak login with authorization code + PKCE on a confidential client (`insurebot-ui`). Tokens stay on the
+  UI server; the browser only holds an HttpOnly, SameSite=Lax session cookie. The redirect's `iss` is checked (RFC 9207), plus `state` and `nonce`.
+- **CSRF**: every state-changing call needs the page's Origin and an `X-Lab-CSRF` header.
+- **Least privilege**: the audit log is read as `insurebot_lab_viewer` (`db/005_lab_viewer.sh`), which can't read customers.
+- **Headers**: CSP, `frame-ancestors 'none'`, no referrer. Tokens shown in the UI are redacted.
+- Lab only: the Attack lab logs in as the test accounts from `.env.test`. Sessions live in memory (restarting the UI logs everyone out).
 
 ## SDK notes
 

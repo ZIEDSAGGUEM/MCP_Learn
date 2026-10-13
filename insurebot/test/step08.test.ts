@@ -7,8 +7,8 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { rawRequest, tokenFor } from "./helpers.js";
 
-const ADMIN = "http://localhost:3002/mcp";
-const PUBLIC = "http://localhost:3000/mcp";
+const ADMIN = "http://127.0.0.1:3002/mcp";
+const PUBLIC = "http://127.0.0.1:3000/mcp";
 const SUPERUSER_DB = process.env.SUPERUSER_DATABASE_URL ?? "postgres://postgres:devonly@127.0.0.1:5432/insurebot";
 
 // Planted in Acme's customers for this file only

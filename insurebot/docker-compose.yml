@@ -8,7 +8,7 @@
 services:
   redis:
     image: redis:7.4.11@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f
-    ports: ["127.0.0.1:6380:6379"] # 6380 on the Mac: 6379 is taken by a local Redis
+    ports: ["127.0.0.1:6381:6379"] # 6381 on the Mac: 6379 and 6380 are used by other local projects
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -20,6 +20,7 @@ services:
       POSTGRES_PASSWORD: devonly # superuser: for migrations only, never used by the app
       POSTGRES_DB: insurebot
       INSUREBOT_APP_PASSWORD: ${INSUREBOT_APP_PASSWORD:?set INSUREBOT_APP_PASSWORD in .env} # read by db/001_roles.sh
+      LAB_VIEWER_PASSWORD: ${LAB_VIEWER_PASSWORD:?set LAB_VIEWER_PASSWORD in .env} # read by db/005_lab_viewer.sh
     volumes:
       - ./db:/docker-entrypoint-initdb.d:ro
       - pgdata:/var/lib/postgresql/data
@@ -60,7 +61,7 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3000
-      ALLOWED_HOSTS: localhost,127.0.0.1
+      ALLOWED_HOSTS: localhost,127.0.0.1,gateway # "gateway": the lab UI calls through the gateway inside Docker
       REDIS_URL: redis://redis:6379
       QUOTE_TTL_SECONDS: 1800
       LEGACY_MODE: stateless # set to "reject" to refuse 2025-era clients
@@ -114,6 +115,31 @@ services:
     environment:
       PAYCO_API_KEY: ${PAYCO_API_KEY:?set PAYCO_API_KEY in .env}
     ports: ["127.0.0.1:4000:4000"] # exposed so tests can count the charges
+
+  ui:
+    # Lab UI: http://localhost:3005. Another MCP client, through the same gateway as everyone else.
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    env_file: .env.test # test-account passwords, used only by the Attack lab's actors
+    environment:
+      UI_PUBLIC_URL: http://localhost:3005
+      OIDC_ISSUER: http://localhost:8080/realms/insurebot
+      OIDC_INTERNAL_URL: http://keycloak:8080/realms/insurebot
+      UI_OIDC_CLIENT_ID: insurebot-ui
+      UI_OIDC_CLIENT_SECRET: ${UI_OIDC_CLIENT_SECRET:?set UI_OIDC_CLIENT_SECRET in .env}
+      RESOURCE_URL: http://localhost:3000/mcp
+      LAB_AUDIT_DATABASE_URL: postgres://insurebot_lab_viewer:${LAB_VIEWER_PASSWORD}@postgres:5432/insurebot
+      PDP_URL: http://pdp:8181
+      PDP_API_KEY: ${PDP_API_KEY:?set PDP_API_KEY in .env}
+      MAILPIT_URL: http://mailpit:8025
+    volumes: ["./policy:/policy"] # the Policies tab edits this file (admins only); the PDP reloads it
+    ports: ["127.0.0.1:3005:3005"]
+    depends_on:
+      gateway:
+        condition: service_started
+      pdp:
+        condition: service_healthy
 
   gateway:
     image: nginx:1.27.5@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d

@@ -43,7 +43,7 @@ describe("Step 11: secrets stay out of Git (MCP01)", () => {
 describe("Step 11: tool poisoning (MCP03)", () => {
   test("the tools InsureBot exposes match the reviewed manifest", async () => {
     const carol = await tokenFor("carol", "quotes:read reports:admin"); // an admin sees every tool
-    const res = await rawRequest(carol, "tools/list", {}, undefined, {}, "http://localhost:3002/mcp");
+    const res = await rawRequest(carol, "tools/list", {}, undefined, {}, "http://127.0.0.1:3002/mcp");
     const live = fingerprint(res.body.result.tools);
     const reviewed = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
     // If this fails: a tool's description or schema changed. Review the change, then run
@@ -65,7 +65,7 @@ describe("Step 11: shadow MCP servers (Episode 20, MCP09)", () => {
   });
 
   test("every lab entrance refuses anonymous MCP calls", async () => {
-    const findings = await scan(["http://localhost:3000/mcp", "http://localhost:3002/mcp", "http://localhost:3003/mcp", "http://localhost:3004/mcp"]);
+    const findings = await scan(["http://127.0.0.1:3000/mcp", "http://127.0.0.1:3002/mcp", "http://127.0.0.1:3003/mcp", "http://127.0.0.1:3004/mcp"]);
     for (const f of findings) expect(f.verdict, f.url).toBe("protected");
   });
 
@@ -85,7 +85,7 @@ describe("Step 11: shadow MCP servers (Episode 20, MCP09)", () => {
     let message = "";
     try {
       execFileSync("npx", ["tsx", "src/server.ts"], {
-        env: { PATH: process.env.PATH, HOME: process.env.HOME, REDIS_URL: "redis://127.0.0.1:6380" },
+        env: { PATH: process.env.PATH, HOME: process.env.HOME, REDIS_URL: "redis://127.0.0.1:6381" },
         encoding: "utf8",
         stdio: "pipe",
         timeout: 20_000,

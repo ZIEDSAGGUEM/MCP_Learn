@@ -5,7 +5,7 @@
 export type Finding = { url: string; verdict: "UNAUTHENTICATED MCP" | "protected" | "not MCP" | "unreachable"; detail: string };
 
 const DEFAULT_PORTS = [3000, 3001, 3002, 3003, 3004, 3999, 4000, 8025, 8080, 8181];
-export const defaultTargets = () => DEFAULT_PORTS.map((p) => `http://localhost:${p}/mcp`);
+export const defaultTargets = () => DEFAULT_PORTS.map((p) => `http://127.0.0.1:${p}/mcp`);
 
 const HEADERS = { "content-type": "application/json", accept: "application/json, text/event-stream" };
 

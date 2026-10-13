@@ -14,6 +14,22 @@ export type Decision = { decision: boolean; reasons: string[]; errors: string[] 
 
 let policies: Record<string, string> = {};
 let loadedText = "";
+let loadedAt = "";
+let lastError: string | null = null;
+
+/** What is in force right now (for the lab UI's policy editor). */
+export function status() {
+  return { policyIds: Object.keys(policies), loadedAt, lastError };
+}
+
+/** Parse a draft WITHOUT loading it: lets an editor check a change before saving it. */
+export function check(text: string): { ok: true; policyIds: string[] } | { ok: false; errors: string[] } {
+  const parts = cedar.policySetTextToParts(text);
+  if (parts.type !== "success") return { ok: false, errors: parts.errors.map((e) => e.message) };
+  const parse = cedar.checkParsePolicySet({ staticPolicies: text });
+  if (parse.type !== "success") return { ok: false, errors: parse.errors.map((e) => e.message) };
+  return { ok: true, policyIds: parts.policies.map((p, i) => p.match(/@id\("([^"]+)"\)/)?.[1] ?? `policy${i}`) };
+}
 
 /**
  * Load every *.cedar file in the folder. If the new text doesn't parse, KEEP the last good policies:
@@ -26,6 +42,7 @@ export async function loadPolicies(dir: string): Promise<void> {
 
   const parts = cedar.policySetTextToParts(text);
   if (parts.type !== "success") {
+    lastError = parts.errors.map((e) => e.message).join("; ");
     console.error("policies NOT reloaded, parse error:", JSON.stringify(parts.errors));
     return;
   }
@@ -36,6 +53,8 @@ export async function loadPolicies(dir: string): Promise<void> {
   });
   policies = next;
   loadedText = text;
+  loadedAt = new Date().toISOString();
+  lastError = null;
   console.log(`loaded ${Object.keys(policies).length} policies from ${files.join(", ")}`);
 }
 

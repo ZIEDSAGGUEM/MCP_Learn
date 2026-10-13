@@ -41,7 +41,7 @@ export function registerPaymentTools(server: McpServer) {
       if (!policy.allowed) {
         return policyDenied(
           policy.reasons.includes("big-premium-needs-admin")
-            ? `Premiums above €200/month need an admin. This one is €${quote.priceEur}.`
+            ? `This premium (€${quote.priceEur}/month) is above the agents' limit set in the policy, so it needs an admin. Ask an admin to charge it.`
             : "Not allowed by policy.",
         );
       }

@@ -14,6 +14,7 @@ Rule: a new deployment is added here **before** it starts. InsureBot refuses to 
 | InsureBot admin entrance | http://localhost:3002/mcp | Keycloak token + admin role (Cedar) | 127.0.0.1 only | Zied | Admins (Carol, Erin) |
 | Lab: good shared cache | http://localhost:3003/mcp | Keycloak token | 127.0.0.1 only | Zied | Step 05 cache lesson |
 | Lab: broken shared cache | http://localhost:3004/mcp | Keycloak token | 127.0.0.1 only | Zied | Step 05: shows the Episode 6 leak. Never deploy. |
+| Security Lab UI (MCP client, not a server) | http://localhost:3005 | Keycloak login (`insurebot-ui`, PKCE) | 127.0.0.1 only | Zied | Lab only: its Attack lab uses the test accounts. Never deploy. |
 
 ## Supporting services (lab)
 
@@ -22,7 +23,7 @@ Rule: a new deployment is added here **before** it starts. InsureBot refuses to 
 | Keycloak | http://localhost:8080 | admin / admin (dev only) | Users, roles, client config |
 | PDP (Cedar + AuthZEN) | http://localhost:8181 | `PDP_API_KEY` | Authorization policies (`policy/*.cedar`) |
 | Postgres | localhost:5432 | `insurebot_app` (pods), `postgres` (migrations) | Customers (RLS), audit log |
-| Redis | localhost:6380 | none, 127.0.0.1 only | Quotes, payments state, reports, rate limits |
+| Redis | localhost:6381 | none, 127.0.0.1 only | Quotes, payments state, reports, rate limits |
 | PayCo (mock) | http://localhost:4000 | `PAYCO_API_KEY` | Charges |
 | Mailpit | http://localhost:8025 | none, 127.0.0.1 only | Every email sent |
 | Jaeger | http://localhost:16686 | none, 127.0.0.1 only | Traces (no PII by design) |

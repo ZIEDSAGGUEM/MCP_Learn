@@ -59,8 +59,10 @@ jobs:
       - name: No unpinned images
         working-directory: insurebot
         run: |
-          if grep -nE '^\s*image:|^FROM' docker-compose.yml Dockerfile | grep -vE '@sha256:[0-9a-f]{64}'; then
+          if grep -nE '^\s*image:|^FROM' docker-compose.yml Dockerfile ui/Dockerfile | grep -vE '@sha256:[0-9a-f]{64}'; then
             echo "Every image must be pinned to a digest"; exit 1
           fi
       - name: Build
         run: docker build -t insurebot:ci insurebot
+      - name: Build the lab UI
+        run: docker build -t insurebot-ui:ci -f insurebot/ui/Dockerfile insurebot
