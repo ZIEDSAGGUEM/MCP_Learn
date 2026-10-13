@@ -7,7 +7,7 @@
 
 services:
   redis:
-    image: redis:7.4.11@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f
+    image: redis:8.10.2@sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6
     ports: ["127.0.0.1:6381:6379"] # 6381 on the Mac: 6379 and 6380 are used by other local projects
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
