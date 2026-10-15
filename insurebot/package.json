@@ -32,7 +32,7 @@
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "express": "^5.2.1",
     "jose": "^6.2.12",
-    "nodemailer": "^10.0.16",
+    "nodemailer": "^10.1.0",
     "pg": "^8.23.1",
     "redis": "^6.3.0",
     "zod": "^4.6.5"
