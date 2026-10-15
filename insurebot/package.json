@@ -35,7 +35,7 @@
     "nodemailer": "^10.0.16",
     "pg": "^8.23.1",
     "redis": "^6.3.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "^2.3.0",
